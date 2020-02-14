@@ -15,6 +15,7 @@ var (
 	c    int
 	h    bool
 	addr string
+	w    int
 )
 
 func init() {
@@ -22,6 +23,7 @@ func init() {
 	flag.IntVar(&c, "c", 100000, "Set message counts which should be higher than 10000")
 	flag.IntVar(&t, "t", 1, "1: broker exit normally, 2: broker killed by kill 9， 3: connect to a mqtt server for network testing, need addr parameter")
 	flag.StringVar(&addr, "addr", "", "set addr in testcase3")
+	flag.IntVar(&w, "w", 5, "wait time")
 }
 
 func main() {
@@ -33,16 +35,16 @@ func main() {
 	}
 	switch t {
 	case 1:
-		test1(c)
+		test1()
 	case 2:
-		test2(c)
+		test2()
 	case 3:
 		if addr == "" {
 			fmt.Println("addr can't be empty in testcase3")
 			flag.Usage()
 			return
 		}
-		test3(c, addr)
+		test3()
 	default:
 		fmt.Println("no testcase for you")
 		flag.Usage()
@@ -51,7 +53,7 @@ func main() {
 	fmt.Println("------------->>> end test <<<---------------")
 }
 
-func test1(count int) {
+func test1() {
 	b, err := NewBroker()
 	if err != nil {
 		fmt.Println(err)
@@ -62,7 +64,7 @@ func test1(count int) {
 	topic := "test"
 	pubObs := &PubObs{
 		cur: 1,
-		max: count,
+		max: c,
 		wg:  &wg1,
 	}
 	pubCli, err := NewPub("tcp://127.0.0.1:"+strconv.Itoa(port), "baetyl-pub", false, pubObs)
@@ -73,8 +75,8 @@ func test1(count int) {
 
 	subObs := &SubObs{
 		channel: make(chan packet.Generic, 50),
-		bitMap:  NewBitMap(count),
-		max:     count,
+		bitMap:  NewBitMap(c),
+		max:     c,
 		wg:      &wg2,
 	}
 	topics := []mqtt.QOSTopic{{
@@ -92,7 +94,7 @@ func test1(count int) {
 	subObs.Start(subCli)
 	// sleep for subscribe done
 	time.Sleep(time.Second)
-	pubCli.Publish(count, topic)
+	pubCli.Publish(c, topic)
 	wg1.Wait()
 	fmt.Println("------------->>> finished send all messages <<<---------------")
 	b.Stop()
@@ -104,14 +106,14 @@ func test1(count int) {
 	}
 	wg2.Wait()
 	fmt.Println("------------->>> start checking all messages <<<---------------")
-	time.Sleep(5 * time.Second)
+	time.Sleep(time.Duration(w) * time.Second)
 	res := subObs.Check()
 	if !res {
 		panic("check failed")
 	}
 }
 
-func test2(count int) {
+func test2() {
 	b, err := NewBroker()
 	if err != nil {
 		fmt.Println(err)
@@ -122,7 +124,7 @@ func test2(count int) {
 	topic := "test"
 	pubObs := &PubObs{
 		cur: 1,
-		max: count,
+		max: c,
 		wg:  &wg1,
 	}
 	pubCli, err := NewPub("tcp://127.0.0.1:"+strconv.Itoa(port), "baetyl-pub", false, pubObs)
@@ -133,8 +135,8 @@ func test2(count int) {
 
 	subObs := &SubObs{
 		channel: make(chan packet.Generic, 50),
-		bitMap:  NewBitMap(count),
-		max:     count,
+		bitMap:  NewBitMap(c),
+		max:     c,
 		wg:      &wg2,
 	}
 	topics := []mqtt.QOSTopic{{
@@ -152,7 +154,7 @@ func test2(count int) {
 	subObs.Start(subCli)
 	// sleep for subscribe done
 	time.Sleep(time.Second)
-	pubCli.Publish(count, topic)
+	pubCli.Publish(c, topic)
 	wg1.Wait()
 	fmt.Println("------------->>> finished send all messages <<<---------------")
 	b.Kill()
@@ -164,21 +166,21 @@ func test2(count int) {
 	}
 	wg2.Wait()
 	fmt.Println("------------->>> start checking all messages <<<---------------")
-	time.Sleep(5 * time.Second)
+	time.Sleep(time.Duration(w) * time.Second)
 	res := subObs.Check()
 	if !res {
 		panic("check failed")
 	}
 }
 
-func test3(count int, addr string) {
+func test3() {
 	addr = "tcp://" + addr
 	var wg1 sync.WaitGroup
 	var wg2 sync.WaitGroup
 	topic := "test"
 	pubObs := &PubObs{
 		cur: 1,
-		max: count,
+		max: c,
 		wg:  &wg1,
 	}
 	pubCli, err := NewPub(addr, "baetyl-pub", true, pubObs)
@@ -190,7 +192,7 @@ func test3(count int, addr string) {
 	subObs := &SubObs{
 		channel: make(chan packet.Generic, 50),
 		bitMap:  NewBitMap(1000000),
-		max:     count,
+		max:     c,
 		wg:      &wg2,
 	}
 	topics := []mqtt.QOSTopic{{
@@ -208,12 +210,12 @@ func test3(count int, addr string) {
 	subObs.Start(subCli)
 	// sleep for subscribe done
 	time.Sleep(2 * time.Second)
-	pubCli.Publish(count, topic)
+	pubCli.Publish(c, topic)
 	wg1.Wait()
 	fmt.Println("------------->>> finished send all messages <<<---------------")
 	wg2.Wait()
 	fmt.Println("------------->>> start checking all messages <<<---------------")
-	time.Sleep(5 * time.Second)
+	time.Sleep(time.Duration(w) * time.Second)
 	res := subObs.Check()
 	if !res {
 		panic("check failed")

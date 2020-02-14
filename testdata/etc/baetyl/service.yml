@@ -1,6 +1,6 @@
 
 addresses:
-  - tcp://0.0.0.0:51317
+  - tcp://0.0.0.0:58357
 principals:
   - username: test
     password: hahaha
